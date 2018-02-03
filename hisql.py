@@ -10,6 +10,11 @@ import re
 
 DEFAULT_HISTORY = '.bash_history'
 DEFAULT_DB = '.hisql.db'
+SCHEMA_VERSION = 1
+
+
+def schema_version(c):
+    return c.execute("PRAGMA user_version").fetchone()[0]
 
 
 def cmd_add(c, args):
@@ -21,6 +26,14 @@ def cmd_clear(c, args):
 
 
 def cmd_init(c, args):
+    version = schema_version()
+    if version == 0:
+        # In this case, it's either uninitialised or at first version
+        # if the table exists, we assume the latter
+        r = c.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='history'")
+        if len(r.fetchall()) == 0:
+            version = -1
+
     c.execute("""CREATE TABLE IF NOT EXISTS history (
                     ts INTEGER(4) DEFAULT (strftime('%s', 'now', 'localtime')),
                     cmd TEXT NOT NULL,
